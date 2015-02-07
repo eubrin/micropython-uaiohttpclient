@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='micropython-uaiohttpclient',
-      version='0.3',
+      version='0.4',
       description="""HTTP client for MicroPython's uasyncio,
 roughly compatible with aiohttp module.
 """,
