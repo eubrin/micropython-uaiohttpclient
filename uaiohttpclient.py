@@ -42,7 +42,7 @@ class ChunkedClientResponse(ClientResponse):
         return "<ChunkedClientResponse %d %s>" % (self.status, self.headers)
 
 
-def request_raw(method, url):
+def request_raw(method, url, data = None):
     try:
         proto, dummy, host, path = url.split("/", 3)
     except ValueError:
@@ -50,21 +50,28 @@ def request_raw(method, url):
         path = ""
     if proto != "http:":
         raise ValueError("Unsupported protocol: " + proto)
-    reader, writer = yield from asyncio.open_connection(host, 80)
+    port = 80
+    try:
+        host, port = host.split(":", 2)
+        port = int(port)
+    except ValueError:
+        port = 80
+    reader, writer = yield from asyncio.open_connection(host, port)
     # Use protocol 1.0, because 1.1 always allows to use chunked transfer-encoding
     # But explicitly set Connection: close, even though this should be default for 1.0,
     # because some servers misbehave w/o it.
-    query = "%s /%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nUser-Agent: compat\r\n\r\n" % (method, path, host)
-    yield from writer.awrite(query.encode('latin-1'))
+    query = "%s /%s HTTP/1.0\r\nHost: %s:%i\r\nConnection: close\r\nUser-Agent: compat\r\n\r\n" % (method, path, host, port)
+    print("REQUEST:\r{}".format(query))
+    yield from writer.awrite(query.encode('utf8'))
 #    yield from writer.aclose()
     return reader
 
 
-def request(method, url):
+def request(method, url, data = None):
     redir_cnt = 0
     redir_url = None
     while redir_cnt < 2:
-        reader = yield from request_raw(method, url)
+        reader = yield from request_raw(method, url, data)
         headers = []
         sline = yield from reader.readline()
         protover, status, msg = sline.split(None, 2)
