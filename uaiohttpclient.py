@@ -22,10 +22,8 @@ class ChunkedClientResponse(ClientResponse):
     def read(self, sz=4*1024*1024):
         if self.chunk_size == 0:
             l = yield from self.content.readline()
-            #print("chunk line:", l)
             l = l.split(b";", 1)[0]
             self.chunk_size = int(l, 16)
-            #print("chunk size:", self.chunk_size)
             if self.chunk_size == 0:
                 # End of message
                 sep = yield from self.content.read(2)
@@ -50,7 +48,6 @@ def request_raw(method, url, data=None):
         path = ""
     if proto != "http:":
         raise ValueError("Unsupported protocol: " + proto)
-    port = 80
     try:
         host, port = host.split(":", 2)
         port = int(port)
@@ -61,15 +58,13 @@ def request_raw(method, url, data=None):
     # But explicitly set Connection: close, even though this should be default for 1.0,
     # because some servers misbehave w/o it.
     content_length = ''
-    if not None == data:
+    if data is not None:
         content_length = "content-length: %i\r\n" % (len(data))
     query = "%s /%s HTTP/1.0\r\nHost: %s:%i\r\n%sConnection: close\r\nUser-Agent: compat\r\n\r\n" % (method, path, host, port, content_length)
-    print("REQUEST:\r%s" % (query))
     yield from writer.awrite(query.encode('latin-1'))
     if data:
         yield from writer.awrite(data)
 
-#    yield from writer.aclose()
     return reader
 
 
