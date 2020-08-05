@@ -40,7 +40,7 @@ class ChunkedClientResponse(ClientResponse):
         return "<ChunkedClientResponse %d %s>" % (self.status, self.headers)
 
 
-def request_raw(method, url, data=None):
+def request_raw(method, url, data=None, timeout=0):
     try:
         proto, dummy, host, path = url.split("/", 3)
     except ValueError:
@@ -53,7 +53,7 @@ def request_raw(method, url, data=None):
         port = int(port)
     except ValueError:
         port = 80
-    reader, writer = yield from asyncio.open_connection(host, port, timeout)
+    reader, writer = yield from asyncio.wait_for(asyncio.open_connection(host, port), timeout)
     # Use protocol 1.0, because 1.1 always allows to use chunked transfer-encoding
     # But explicitly set Connection: close, even though this should be default for 1.0,
     # because some servers misbehave w/o it.
@@ -68,11 +68,11 @@ def request_raw(method, url, data=None):
     return reader
 
 
-def request(method, url, data=None):
+def request(method, url, data=None, timeout=0):
     redir_cnt = 0
     redir_url = None
     while redir_cnt < 2:
-        reader = yield from request_raw(method, url, data)
+        reader = yield from request_raw(method, url, data, timeout)
         headers = []
         sline = yield from reader.readline()
         protover, status, msg = sline.split(None, 2)
